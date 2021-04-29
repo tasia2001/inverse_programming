@@ -109,12 +109,12 @@ void insert_negative_value(struct BasicInput *input, PointerArray *constraint_ma
 void remake_right_side_matrix(struct BasicInput *input, PointerArray *constraint_matrix, Array *right_side_array) {
     for (int i = 0; i < input->right_side_matrix_length; ++i) {
         if (input->right_side_matrix[i][1] == -1) { // <=
-            insert_positive_value(input, constraint_matrix, right_side_array, i);
+            insert_negative_value(input, constraint_matrix, right_side_array, i);
         } else if (input->right_side_matrix[i][1] == 0) { // ==
+            insert_negative_value(input, constraint_matrix, right_side_array, i);
             insert_positive_value(input, constraint_matrix, right_side_array, i);
-            insert_negative_value(input, constraint_matrix, right_side_array, i);
         } else if (input->right_side_matrix[i][1] == 1) { // >=
-            insert_negative_value(input, constraint_matrix, right_side_array, i);
+            insert_positive_value(input, constraint_matrix, right_side_array, i);
         }
     }
 }
@@ -129,7 +129,7 @@ void insert_positive_bound(struct BasicInput *input, PointerArray *constraint_ma
         }
     }
     insertPointerArray(constraint_matrix, constraint_matrix_row);
-    insertArray(right_side_array, input->bounds[i][1]);
+    insertArray(right_side_array, input->bounds[i][0]);
 }
 
 void insert_negative_bound(struct BasicInput *input, PointerArray *constraint_matrix, Array *right_side_array, int i) {
@@ -141,19 +141,20 @@ void insert_negative_bound(struct BasicInput *input, PointerArray *constraint_ma
             constraint_matrix_row[j] = -1;
         }
     }
+
     insertPointerArray(constraint_matrix, constraint_matrix_row);
-    insertArray(right_side_array, -input->bounds[i][0]);
+    insertArray(right_side_array, -input->bounds[i][1]);
 }
 
 void remake_bounds(struct BasicInput *input, PointerArray *constraint_matrix, Array *right_side_array) {
     for (int i = 0; i < input->bounds_length; ++i) {
         if (input->bounds[i][0] != -inf && input->bounds[i][1] != +inf) {
-            insert_negative_bound(input, constraint_matrix, right_side_array, i);
             insert_positive_bound(input, constraint_matrix, right_side_array, i);
+            insert_negative_bound(input, constraint_matrix, right_side_array, i);
         } else if (input->bounds[i][0] != -inf) {
-            insert_negative_bound(input, constraint_matrix, right_side_array, i);
-        } else if (input->bounds[i][1] != +inf) {
             insert_positive_bound(input, constraint_matrix, right_side_array, i);
+        } else if (input->bounds[i][1] != +inf) {
+            insert_negative_bound(input, constraint_matrix, right_side_array, i);
         }
     }
 }
