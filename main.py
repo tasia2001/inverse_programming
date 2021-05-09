@@ -47,8 +47,6 @@ class AnotherOneOutput(Structure):
     ]
 
 
-<<<<<<< HEAD
-=======
 class CanonicalForm(Structure):
     _fields_ = [
         ('obj_fun_coefficients', POINTER(c_float)),
@@ -85,15 +83,12 @@ class ToPartialProblemOutput(Structure):
     ]
 
 
->>>>>>> tasia2001-master
 class FloatVector(Structure):
     _fields_ = [
         ('values', POINTER(c_float)),
     ]
 
 
-<<<<<<< HEAD
-=======
 class MPEC_solver_input(Structure):
     _fields_ = [
         ('vector_x0', POINTER(c_float)),
@@ -131,15 +126,12 @@ class MPEC_solver_output(Structure):
     ]
 
 
->>>>>>> tasia2001-master
 if __name__ == '__main__':
     lib.remaster_basic_input.restype = RemasteredInput
     lib.remaster_basic_input.argtypes = [BasicInput]
 
     lib.function2.restype = AnotherOneOutput
     lib.function2.argtypes = [RemasteredInput, FloatVector]
-<<<<<<< HEAD
-=======
 
     lib.to_canonical_form.restype = CanonicalForm
     lib.to_canonical_form.argtypes = [RemasteredInput]
@@ -149,7 +141,6 @@ if __name__ == '__main__':
 
     lib.solve_inverse_via_MPEC.restype = MPEC_solver_output
     lib.solve_inverse_via_MPEC.argtypes = [MPEC_solver_input]
->>>>>>> tasia2001-master
 
     # coefficients = [1.0, 3.0, -1.0]
     # basic_input = BasicInput()
@@ -250,61 +241,6 @@ if __name__ == '__main__':
 
     # resource = [[1, 1], [-1, 1], [1, 0]]
     resource = eval(input())
-<<<<<<< HEAD
-    bounds = (POINTER(c_float) * 3)()
-    for i in range(3):
-        bounds[i] = (c_float * 2)(*resource[i])
-    basic_input.bounds = bounds
-    basic_input.bounds_length = 3
-
-    result = lib.remaster_basic_input(basic_input)
-
-    float_vector = FloatVector()
-    # resource = [-1.0, 10.0, -32.0]
-    resource = eval(input())
-    float_vector.values = (c_float * 3)(*resource)
-
-    # print("Исходный вектор: ", end='')
-    # for i in range(result.coefficients_length):
-    #     print(result.coefficients[i], end=' ')
-    # print("\nНовая матрица ограничений: ")
-    # for i in range(result.constraint_matrix_length):
-    #     for j in range(result.coefficients_length):
-    #         print(result.constraint_matrix[i][j], end=' ')
-    #     print()
-    # print("Новый массив правых частей: ")
-    # for i in range(result.right_side_array_length):
-    #     print(result.right_side_array[i], end=' ')
-    # print()
-
-    new_result = lib.function2(result, float_vector)
-    print('vars_length: ', new_result.vars_length)
-    print('constrs_length: ', new_result.constrs_length)
-    print('obj_length: ', new_result.obj_length)
-    print('obj: ')
-    for i in range(new_result.obj_length):
-        print(new_result.obj[i], end=' ')
-    print()
-    print('newA_length: ', new_result.newA_length)
-    print('newA: ')
-    for i in range(3 * new_result.vars_length):
-        for j in range(new_result.newA_length):
-            print(new_result.newA[i][j], end=' ')
-        print()
-    print('sense_length: ', new_result.sense_length)
-    print('sense: ')
-    for i in range(new_result.sense_length):
-        print(new_result.sense[i], end=' ')
-    print()
-    print('rhs_length: ', new_result.rhs_length)
-    for i in range(new_result.rhs_length):
-        print(new_result.rhs[i], end=' ')
-    print()
-    print('lb_length: ', new_result.lb_length)
-    for i in range(new_result.lb_length):
-        print(new_result.lb[i], end=' ')
-    print()
-=======
     matrix = (POINTER(c_float) * len(resource))()
     for i in range(len(resource)):
         matrix[i] = (c_float * len(resource[0]))(*resource[i])
@@ -402,4 +338,3 @@ if __name__ == '__main__':
     #     for j in range(result.bounds_columns):
     #         print(result.bounds[i][j], end=' ')
     #     print()
->>>>>>> tasia2001-master

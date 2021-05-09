@@ -1,13 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
-<<<<<<< HEAD
-=======
 
 const float inf = (float) 99999999.0;
 const float undefined = (float) 67108864.0;
 const float BIG_DIGIT = (float) 88888888.0;
->>>>>>> tasia2001-master
 
 
 typedef struct {
@@ -156,29 +153,19 @@ void insert_negative_bound(struct BasicInput *input, PointerArray *constraint_ma
             constraint_matrix_row[j] = -1;
         }
     }
-
     insertPointerArray(constraint_matrix, constraint_matrix_row);
     insertArray(right_side_array, -input->bounds[i][1]);
 }
 
 void remake_bounds(struct BasicInput *input, PointerArray *constraint_matrix, Array *right_side_array) {
     for (int i = 0; i < input->bounds_length; ++i) {
-<<<<<<< HEAD
         if (input->bounds[i][0] > -inf && input->bounds[i][1] < +inf) {
             insert_negative_bound(input, constraint_matrix, right_side_array, i);
             insert_positive_bound(input, constraint_matrix, right_side_array, i);
         } else if (input->bounds[i][0] <= -inf && input->bounds[i][1] < +inf) {
             insert_negative_bound(input, constraint_matrix, right_side_array, i);
         } else if (input->bounds[i][0] > -inf && input->bounds[i][1] >= +inf) {
-=======
-        if (input->bounds[i][0] != -inf && input->bounds[i][1] != +inf) {
             insert_positive_bound(input, constraint_matrix, right_side_array, i);
-            insert_negative_bound(input, constraint_matrix, right_side_array, i);
-        } else if (input->bounds[i][0] != -inf) {
->>>>>>> 743fafc (operation signs changed)
-            insert_positive_bound(input, constraint_matrix, right_side_array, i);
-        } else if (input->bounds[i][1] != +inf) {
-            insert_negative_bound(input, constraint_matrix, right_side_array, i);
         }
     }
 }
@@ -220,8 +207,6 @@ struct AnotherOneOutput {
     int lb_length;
 };
 
-<<<<<<< HEAD
-=======
 struct CanonicalForm {
     float *obj_fun_coefficients;
     int obj_fun_coefficients_length;
@@ -234,7 +219,6 @@ struct CanonicalForm {
     int low_bounds_length;
 };
 
->>>>>>> tasia2001-master
 Array get_obj_vector(int units, int zeroes) {
     Array obj;
     initArray(&obj, 1);
@@ -445,8 +429,6 @@ struct AnotherOneOutput function2(struct RemasteredInput input, struct FloatVect
     output.lb = lb.array;
     output.lb_length = 2 * input.coefficients_length + input.constraint_matrix_length;
     return output;
-<<<<<<< HEAD
-=======
 }
 
 Array get_obj_fun_coefficients(float *coefficients, int coefficients_length, int constrs_matrix_length) {
@@ -1172,5 +1154,4 @@ struct MPEC_solver_output solve_inverse_via_MPEC(struct MPEC_solver_input input)
     output.bounds_columns = 2;
 
     return output;
->>>>>>> tasia2001-master
 }
