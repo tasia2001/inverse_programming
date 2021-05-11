@@ -1155,3 +1155,28 @@ struct MPEC_solver_output solve_inverse_via_MPEC(struct MPEC_solver_input input)
 
     return output;
 }
+
+struct P_matrix {
+    float **matrix;
+    int matrix_side;
+};
+
+struct P_matrix get_P_matrix(int n, int m) {
+    struct P_matrix p;
+    PointerArray matrix;
+    initPointerArray(&matrix, 1);
+    for (int i = 0; i < 3 * n + m; ++i) {
+        Array row;
+        initArray(&row, 1);
+        for (int j = 0; j < 3 * n + m; ++j) {
+            insertArray(&row, 0);
+        }
+        insertPointerArray(&matrix, row.array);
+    }
+    for (int i = 0; i < n; ++i) {
+        matrix.array[i][i + n] = 1;
+    }
+    p.matrix = matrix.array;
+    p.matrix_side = 3 * n + m;
+    return p;
+}

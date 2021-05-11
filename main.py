@@ -126,6 +126,13 @@ class MPEC_solver_output(Structure):
     ]
 
 
+class P_matrix(Structure):
+    _fields_ = [
+        ('matrix', POINTER(POINTER(c_float))),
+        ('matrix_side', c_int),
+    ]
+
+
 if __name__ == '__main__':
     lib.remaster_basic_input.restype = RemasteredInput
     lib.remaster_basic_input.argtypes = [BasicInput]
@@ -141,6 +148,9 @@ if __name__ == '__main__':
 
     lib.solve_inverse_via_MPEC.restype = MPEC_solver_output
     lib.solve_inverse_via_MPEC.argtypes = [MPEC_solver_input]
+
+    lib.get_P_matrix.restype = P_matrix
+    lib.get_P_matrix.argtypes = [c_int, c_int]
 
     # coefficients = [1.0, 3.0, -1.0]
     # basic_input = BasicInput()
@@ -237,38 +247,38 @@ if __name__ == '__main__':
     #     print(new_result.low_bounds[i], end=' ')
     # print()
 
-    to_partial_problem_input = ToPartialProblemInput()
-
-    # resource = [[1, 1], [-1, 1], [1, 0]]
-    resource = eval(input())
-    matrix = (POINTER(c_float) * len(resource))()
-    for i in range(len(resource)):
-        matrix[i] = (c_float * len(resource[0]))(*resource[i])
-    to_partial_problem_input.matrix = matrix
-    to_partial_problem_input.matrix_rows = len(resource)
-    to_partial_problem_input.matrix_columns = len(resource[0]) if resource != [] else 0
-
-    # resource = [undefined, 1]
-    resource = eval(input())
-    matrix = (c_float * len(resource))(*resource)
-    to_partial_problem_input.right_side_array = matrix
-    to_partial_problem_input.right_side_array_length = len(resource)
-
-    # resource = [3, 1, 2]
-    resource = eval(input())
-    to_partial_problem_input.vector = (c_float * len(resource))(*resource)
-
-    result = lib.to_partial_problem(to_partial_problem_input)
-    print('constraint_matrix: ')
-    for i in range(result.constraint_matrix_rows):
-        for j in range(result.constraint_matrix_columns):
-            print(result.constraint_matrix[i][j], end=' ')
-        print()
-    print('\nright_side: ')
-    for i in range(result.right_side_rows):
-        for j in range(result.right_side_columns):
-            print(result.right_side[i][j], end=' ')
-        print()
+    # to_partial_problem_input = ToPartialProblemInput()
+    #
+    # # resource = [[1, 1], [-1, 1], [1, 0]]
+    # resource = eval(input())
+    # matrix = (POINTER(c_float) * len(resource))()
+    # for i in range(len(resource)):
+    #     matrix[i] = (c_float * len(resource[0]))(*resource[i])
+    # to_partial_problem_input.matrix = matrix
+    # to_partial_problem_input.matrix_rows = len(resource)
+    # to_partial_problem_input.matrix_columns = len(resource[0]) if resource != [] else 0
+    #
+    # # resource = [undefined, 1]
+    # resource = eval(input())
+    # matrix = (c_float * len(resource))(*resource)
+    # to_partial_problem_input.right_side_array = matrix
+    # to_partial_problem_input.right_side_array_length = len(resource)
+    #
+    # # resource = [3, 1, 2]
+    # resource = eval(input())
+    # to_partial_problem_input.vector = (c_float * len(resource))(*resource)
+    #
+    # result = lib.to_partial_problem(to_partial_problem_input)
+    # print('constraint_matrix: ')
+    # for i in range(result.constraint_matrix_rows):
+    #     for j in range(result.constraint_matrix_columns):
+    #         print(result.constraint_matrix[i][j], end=' ')
+    #     print()
+    # print('\nright_side: ')
+    # for i in range(result.right_side_rows):
+    #     for j in range(result.right_side_columns):
+    #         print(result.right_side[i][j], end=' ')
+    #     print()
 
     # solver_input = MPEC_solver_input()
     #
@@ -338,3 +348,10 @@ if __name__ == '__main__':
     #     for j in range(result.bounds_columns):
     #         print(result.bounds[i][j], end=' ')
     #     print()
+
+    m = lib.get_P_matrix(5, 3)
+    print(m.matrix_side)
+    for i in range(m.matrix_side):
+        for j in range(m.matrix_side):
+            print(m.matrix[i][j], end=' ')
+        print()
