@@ -3,18 +3,14 @@ import inverse_programming as invp
 if __name__ == '__main__':
     inf = invp.inf
     undefined = invp.undefined
-    c = [1, 3, -1]
-    A = [[1, 2, 0], [3, 3, 1], [-1, 2, 9]]
-    RS = [[4, -1], [-5, 1], [7, 0]]
-    bounds = [[-1, 3], [-inf, 10], [-inf, +inf]]
-    coefficients, constraint_matrix, right_side_array = invp.remaster_basic_input(c, A, RS, bounds)
-    print(coefficients)
-    print(constraint_matrix)
-    print(right_side_array)
 
-    x0 = [-1, 10, -32]
-    vars_length, constrs_length, obj, newA, sense, rhs, lb = invp.function2(coefficients, constraint_matrix,
-                                                                            right_side_array, x0)
+    c = [-2, 3, -6, -1]
+    A = [[2, 1, -2, 1], [-2, -1, 2, -1], [-1, -2, 0, -4], [1, -1, 2, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0],
+         [0, 0, 0, 1]]
+    RS = [24, -24, -22, 0, 0, 0, 0, 0]
+    x0 = [26 / 3, 20 / 3, 0, 0]
+
+    vars_length, constrs_length, obj, newA, sense, rhs, lb = invp.function2(c, A, RS, x0)
     print(vars_length)
     print(constrs_length)
     print(obj)
