@@ -618,7 +618,7 @@ PointerArray get_constraint_matrix(float **input_matrix, int matrix_columns, int
         for (int j = 2 * matrix_rows; j < 2 * matrix_rows + matrix_columns; ++j) {
             c0[j] = input_matrix[j - 2 * matrix_rows][(int) undefined_positions[i]];
         }
-        c0[2 * matrix_rows + matrix_columns + (int) undefined_positions[i]] = -BIG_DIGIT;
+        c0[2 * matrix_rows + matrix_columns + (int) undefined_positions[i]] = BIG_DIGIT;
         insertPointerArray(&constraint_matrix, c0);
     }
 
@@ -700,7 +700,7 @@ PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_co
     }
 
     // 5
-    for (int i = 0; i < matrix_rows; ++i) {
+    for (int i = 0; i < matrix_columns; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         c0[0] = 0;
@@ -709,7 +709,7 @@ PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_co
     }
 
     // 6
-    for (int i = 0; i < matrix_columns; ++i) {
+    for (int i = 0; i < matrix_rows; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         for (int j = 0; j < defined_positions_count; ++j) {
