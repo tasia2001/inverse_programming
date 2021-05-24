@@ -796,6 +796,8 @@ struct MPEC_solver_output {
     float **bounds;
     int bounds_rows;
     int bounds_columns;
+    int nx;
+    int nbin;
 };
 
 Array get_objfun_coeffs(int vars, int constrA) {
@@ -1143,6 +1145,9 @@ struct MPEC_solver_output solve_inverse_via_MPEC(struct MPEC_solver_input input)
     output.bounds = bounds.array;
     output.bounds_rows = 2 * input.matrixA_rows + 4 * input.matrixA_columns;
     output.bounds_columns = 2;
+
+    output.nbin = input.vector_x0_length;
+    output.nx = output.constrs_matrix_columns - output.nbin;
 
     return output;
 }

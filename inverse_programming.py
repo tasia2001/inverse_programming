@@ -130,6 +130,8 @@ class MPEC_solver_output(Structure):
         ('bounds', POINTER(POINTER(c_float))),
         ('bounds_rows', c_int),
         ('bounds_columns', c_int),
+        ('nx', c_int),
+        ('nbin', c_int),
     ]
 
 
