@@ -380,8 +380,12 @@ Array get_B(float **constraint_matrix, int constraint_matrix_length, int coeffic
 Array get_lb_vector(int vars_length, Array B, int matrix_length) {
     Array lb;
     initArray(&lb, 1);
-    for (int i = 0; i < vars_length * 2; ++i) {
+    for (int i = 0; i < vars_length; ++i) {
         insertArray(&lb, 0);
+    }
+
+    for (int i = 0; i < vars_length; ++i) {
+        insertArray(&lb, -inf);
     }
 
     for (int i = 0; i < matrix_length; ++i) {
@@ -512,6 +516,7 @@ struct ToPartialProblemInput {
     float *right_side_array;
     int right_side_array_length;
     float *vector;
+    int vector_length;
 };
 
 struct ToPartialProblemOutput {
@@ -521,6 +526,8 @@ struct ToPartialProblemOutput {
     float **right_side;
     int right_side_rows;
     int right_side_columns;
+    int nz;
+    int nx;
 };
 
 float *get_zeroes_line(int length, float *line) {
@@ -752,6 +759,9 @@ struct ToPartialProblemOutput to_partial_problem(struct ToPartialProblemInput in
     output.right_side = right_side.array;
     output.right_side_rows = (int) right_side.used;
     output.right_side_columns = 2;
+
+    output.nz = input.vector_length;
+    output.nx = output.constraint_matrix_columns - output.nz;
 
     return output;
 }
