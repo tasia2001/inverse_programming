@@ -879,36 +879,28 @@ PointerArray get_constrs_matrix_MPEC(float **matrixA, int matrixA_rows, int matr
 
     // 3
     for (int i = 0; i < matrixA_columns; ++i) {
-        Array constrs_matrix_row1;
-        Array constrs_matrix_row2;
-        initArray(&constrs_matrix_row1, 1);
-        initArray(&constrs_matrix_row2, 1);
+        Array constrs_matrix_row;
+        initArray(&constrs_matrix_row, 1);
         for (int j = 0; j < matrixA_columns; ++j) {
             if (i == j) {
-                insertArray(&constrs_matrix_row1, 1);
-                insertArray(&constrs_matrix_row2, 1);
+                insertArray(&constrs_matrix_row, 1);
             } else {
-                insertArray(&constrs_matrix_row1, 0);
-                insertArray(&constrs_matrix_row2, 0);
+                insertArray(&constrs_matrix_row, 0);
             }
         }
 
         for (int j = 0; j < 2 * matrixA_rows + 2 * matrixA_columns; ++j) {
-            insertArray(&constrs_matrix_row1, 0);
-            insertArray(&constrs_matrix_row2, 0);
+            insertArray(&constrs_matrix_row, 0);
         }
 
         for (int j = 0; j < matrixA_columns; ++j) {
             if (i == j) {
-                insertArray(&constrs_matrix_row1, inf);
-                insertArray(&constrs_matrix_row2, -inf);
+                insertArray(&constrs_matrix_row, -inf);
             } else {
-                insertArray(&constrs_matrix_row1, 0);
-                insertArray(&constrs_matrix_row2, 0);
+                insertArray(&constrs_matrix_row, 0);
             }
         }
-        insertPointerArray(&constrs_matrix, constrs_matrix_row1.array);
-        insertPointerArray(&constrs_matrix, constrs_matrix_row2.array);
+        insertPointerArray(&constrs_matrix, constrs_matrix_row.array);
     }
 
     // 4
@@ -998,21 +990,13 @@ PointerArray get_constrs_matrix_MPEC(float **matrixA, int matrixA_rows, int matr
 Array get_sense_array(int matrixA_rows, int matrixA_columns, int matrixB_rows, int matrixC_rows) {
     Array sense_array;
     initArray(&sense_array, 1);
-
     for (int i = 0; i < matrixA_rows; ++i) {
         insertArray(&sense_array, 0);
     }
 
     for (int i = 0; i < matrixA_columns; ++i) {
         insertArray(&sense_array, 1);
-    }
-
-    for (int i = 0; i < matrixA_columns; ++i) {
         insertArray(&sense_array, -1);
-    }
-
-    for (int i = 0; i < matrixA_columns; ++i) {
-        insertArray(&sense_array, 1);
     }
 
     for (int i = 0; i < matrixA_columns; ++i) {
@@ -1028,11 +1012,8 @@ Array get_sense_array(int matrixA_rows, int matrixA_columns, int matrixB_rows, i
     }
 
     for (int i = 0; i < matrixA_columns; ++i) {
-        insertArray(&sense_array, -1);
-    }
-
-    for (int i = 0; i < matrixA_columns; ++i) {
         insertArray(&sense_array, 1);
+        insertArray(&sense_array, -1);
     }
 
     return sense_array;
@@ -1053,7 +1034,7 @@ Array get_right_hand_side(int matrixA_rows, int matrixA_columns,
         insertArray(&right_hand_side, inf);
     }
 
-    for (int i = 0; i < 2 * matrixA_columns; ++i) {
+    for (int i = 0; i < matrixA_columns; ++i) {
         insertArray(&right_hand_side, 0);
     }
 
