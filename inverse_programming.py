@@ -307,7 +307,6 @@ class InverseProgrammingSolver:
         model3.Ax = pyo.Param(model3.I, model3.Jx)  # объявляем матрицу ограничений для x
         model3.Az = pyo.Param(model3.I, model3.Jz)  # объявляем матрицу ограничений для z
         model3.rhs = pyo.Param(model3.I, model3.two)  # rhs
-        model3.P = pyo.Param(model3.Jx, model3.Jx)  # коэффициенты цф для x
 
         # variables
         model3.x = pyo.Var(model3.Jx, domain=pyo.Reals)
@@ -330,7 +329,7 @@ class InverseProgrammingSolver:
         model3.AxbConstraint = pyo.Constraint(model3.I, rule=ax_constraint_rule)
         self._solve_tool_partial_inverse_model = model3
 
-    def solve_tool_partial_inverse(self, m, n, nx, nz, A, rhs, P):
+    def solve_tool_partial_inverse(self, m, n, nx, nz, A, rhs):
         data = {None: {
             'm': {None: m},
             'n': {None: n},
@@ -338,8 +337,7 @@ class InverseProgrammingSolver:
             'nz': {None: nz},
             'Ax': {(i + 1, j + 1): A[i][j] for i in range(m) for j in range(nx)},
             'Az': {(i + 1, j + 1): A[i][j + nx] for i in range(m) for j in range(nz)},
-            'rhs': {(i + 1, j + 1): rhs[i][j] for i in range(m) for j in range(2)},
-            'P': {(i + 1, j + 1): P[i][j] for i in range(nx) for j in range(nx)}
+            'rhs': {(i + 1, j + 1): rhs[i][j] for i in range(m) for j in range(2)}
         }}
         ins = self._solve_tool_partial_inverse_model.create_instance(data)
         optimizer = pyo.SolverFactory('gurobi', solver_io='python')
@@ -354,7 +352,6 @@ class InverseProgrammingSolver:
         self._prepare_to_canonical_form()
         self._prepare_get_partial_problem_model()
         self._prepare_get_inverse_MPEC_model()
-        self._prepare_get_QPmatrix_for_partial()
 
     def _prepare_to_standard_form(self):
         self._lib.remaster_basic_input.restype = RemasteredInput
@@ -460,198 +457,161 @@ class InverseProgrammingSolver:
         self._lib.to_canonical_form.restype = CanonicalForm
         self._lib.to_canonical_form.argtypes = [RemasteredInput]
 
-    def validate_to_canonical_form_input(self):
-        pass
+    def validate_to_canonical_form_input(self, coefficients, constraint_matrix, right_side_array):
+        validated_input = RemasteredInput()
 
-    def validate_to_canonical_form_output(self):
-        pass
+        prepared_coefficients = [float(i) for i in coefficients]
+        validated_input.coefficients = (c_float * len(coefficients))(*prepared_coefficients)
+        validated_input.coefficients_length = len(coefficients)
 
-    def to_canonical_form(self):
-        pass
-    # def solve_inverse_cost_vector_problem(self, *args, solver='gurobi'):
-    #     values = self.get_inverse_MPEC_model(*args)
-    #     return self.solve_tool_inverse_cost_vector(*values, solver)
+        prepared_constraint_matrix = (POINTER(c_float) * len(constraint_matrix))()
+        for i in range(len(constraint_matrix)):
+            resource = [float(j) for j in constraint_matrix[i]]
+            prepared_constraint_matrix[i] = (c_float * len(resource))(*resource)
+        validated_input.constraint_matrix = prepared_constraint_matrix
+        validated_input.constraint_matrix_length = len(constraint_matrix)
 
-    # new_result = lib.to_canonical_form(result)
-    # print('obj_fun_coefficients: ')
-    # for i in range(new_result.obj_fun_coefficients_length):
-    #     print(new_result.obj_fun_coefficients[i], end=' ')
-    # print('\nconstrs_matrix: ')
-    # for i in range(new_result.constrs_matrix_rows):
-    #     for j in range(new_result.constrs_matrix_columns):
-    #         print(new_result.constrs_matrix[i][j], end=' ')
-    #     print()
-    # print('right_hand_side: ')
-    # for i in range(new_result.right_hand_side_length):
-    #     print(new_result.right_hand_side[i], end=' ')
-    # print('\nlow_bounds: ')
-    # for i in range(new_result.low_bounds_length):
-    #     print(new_result.low_bounds[i], end=' ')
-    # print()
+        prepared_right_side_array = [float(i) for i in right_side_array]
+        validated_input.right_side_array = (c_float * len(right_side_array))(*prepared_right_side_array)
+        validated_input.right_side_array_length = len(right_side_array)
+
+        return validated_input
+
+    def validate_to_canonical_form_output(self, output):
+        obj_fun_coefficients = [float(output.obj_fun_coefficients[i]) for i in
+                                range(output.obj_fun_coefficients_length)]
+        constrs_matrix = [[float(output.constrs_matrix[j][i]) for i in range(output.constrs_matrix_columns)]
+                          for j in range(output.constrs_matrix_rows)]
+        right_hand_side = [float(output.right_hand_side[i]) for i in range(output.right_hand_side_length)]
+        low_bounds = [float(output.low_bounds[i]) for i in range(output.low_bounds_length)]
+        return obj_fun_coefficients, constrs_matrix, right_hand_side, low_bounds
+
+    def to_canonical_form(self, coefficients, constraint_matrix, right_side_array):
+        validated_input = self.validate_to_canonical_form_input(coefficients, constraint_matrix, right_side_array)
+        output = self._lib.to_canonical_form(validated_input)
+        return self.validate_to_canonical_form_output(output)
 
     def _prepare_get_partial_problem_model(self):
         self._lib.to_partial_problem.restype = ToPartialProblemOutput
         self._lib.to_partial_problem.argtypes = [ToPartialProblemInput]
 
-    def validate_get_partial_problem_model_input(self):
-        pass
+    def validate_get_partial_problem_model_input(self, condition_matrix, right_side_array, vector):
+        validated_input = ToPartialProblemInput()
+        validated_vector = FloatVector()
 
-    def validate_get_partial_problem_model_output(self):
-        pass
+        prepared_condition_matrix = (POINTER(c_float) * len(condition_matrix))()
+        for i in range(len(condition_matrix)):
+            resource = [float(j) for j in condition_matrix[i]]
+            prepared_condition_matrix[i] = (c_float * len(resource))(*resource)
+        validated_input.matrix = prepared_condition_matrix
+        validated_input.matrix_rows = len(condition_matrix)
+        validated_input.matrix_columns = len(condition_matrix[0]) if condition_matrix != [] else 0
 
-    def get_partial_problem_model(self):
-        pass
-    # def solve_inverse_cost_vector_problem(self, *args, solver='gurobi'):
-    #     values = self.get_inverse_MPEC_model(*args)
-    #     return self.solve_tool_inverse_cost_vector(*values, solver)
+        prepared_right_side_array = [float(j) for j in right_side_array]
+        validated_input.right_side_array = (c_float * len(right_side_array))(*prepared_right_side_array)
+        validated_input.right_side_array_length = len(right_side_array)
 
-    # to_partial_problem_input = ToPartialProblemInput()
-    #
-    # # resource = [[1, 1], [-1, 1], [1, 0]]
-    # resource = eval(input())
-    # matrix = (POINTER(c_float) * len(resource))()
-    # for i in range(len(resource)):
-    #     matrix[i] = (c_float * len(resource[0]))(*resource[i])
-    # to_partial_problem_input.matrix = matrix
-    # to_partial_problem_input.matrix_rows = len(resource)
-    # to_partial_problem_input.matrix_columns = len(resource[0]) if resource != [] else 0
-    #
-    # # resource = [undefined, 1]
-    # resource = eval(input())
-    # matrix = (c_float * len(resource))(*resource)
-    # to_partial_problem_input.right_side_array = matrix
-    # to_partial_problem_input.right_side_array_length = len(resource)
-    #
-    # # resource = [3, 1, 2]
-    # resource = eval(input())
-    # to_partial_problem_input.vector = (c_float * len(resource))(*resource)
-    #
-    # result = lib.to_partial_problem(to_partial_problem_input)
-    # print('constraint_matrix: ')
-    # for i in range(result.constraint_matrix_rows):
-    #     for j in range(result.constraint_matrix_columns):
-    #         print(result.constraint_matrix[i][j], end=' ')
-    #     print()
-    # print('\nright_side: ')
-    # for i in range(result.right_side_rows):
-    #     for j in range(result.right_side_columns):
-    #         print(result.right_side[i][j], end=' ')
-    #     print()
+        prepared_vector = [float(j) for j in vector]
+        validated_input.vector = (c_float * len(vector))(*prepared_vector)
+        validated_input.vector_length = len(vector)
+
+        prepared_vector = [float(i) for i in vector]
+        validated_vector.values = (c_float * len(vector))(*prepared_vector)
+
+        return validated_input, validated_vector
+
+    def validate_get_partial_problem_model_output(self, output):
+        constraint_matrix = [[float(output.constraint_matrix[i][j]) for j in range(output.constraint_matrix_columns)]
+                             for i in range(output.constraint_matrix_rows)]
+
+        right_side = [[float(output.right_side[i][j]) for j in range(output.right_side_columns)]
+                      for i in range(output.right_side_rows)]
+
+        m = output.constraint_matrix_rows
+        n = output.constraint_matrix_columns
+        nx = output.nx
+        nz = output.nz
+
+        return m, n, nx, nz, constraint_matrix, right_side
+
+    def get_partial_problem_model(self, condition_matrix, right_side_array, vector):
+        validated_input, validated_vector = self.validate_get_partial_problem_model_input(
+            condition_matrix, right_side_array, vector)
+        output = self._lib.to_partial_problem(validated_input, validated_vector)
+
+        return self.validate_get_partial_problem_model_output(output)
+
+    def solve_partial_problem(self, *args):
+        values = self.get_partial_problem_model(*args)
+        return self.solve_tool_partial_inverse(*values, 'gurobi')
 
     def _prepare_get_inverse_MPEC_model(self):
         self._lib.solve_inverse_via_MPEC.restype = MPEC_solver_output
         self._lib.solve_inverse_via_MPEC.argtypes = [MPEC_solver_input]
 
-    def validate_get_inverse_MPEC_model_input(self):
-        pass
+    def validate_get_inverse_MPEC_model_input(self, vector_x0, martixA, matrixB, matrixC, vector_b, vector_c):
 
-    def validate_get_inverse_MPEC_model_output(self):
-        pass
+        validated_input = MPEC_solver_input()
+        prepared_vector_x0 = [float(i) for i in vector_x0]
+        validated_input.vector_x0 = (c_float * len(vector_x0))(*prepared_vector_x0)
+        validated_input.vector_x0_length = len(vector_x0)
 
-    def get_inverse_MPEC_model(self):
-        pass
+        prepared_matrixA = (POINTER(c_float) * len(martixA))()
+        for i in range(len(martixA)):
+            resource = [float(j) for j in martixA[i]]
+            prepared_matrixA[i] = (c_float * len(resource))(*resource)
+        validated_input.matrixA = prepared_matrixA
+        validated_input.matrixA_rows = len(martixA)
+        validated_input.matrixA_columns = len(martixA[0])
 
-    # def solve_inverse_cost_vector_problem(self, *args, solver='gurobi'):
-    #     values = self.get_inverse_MPEC_model(*args)
-    #     return self.solve_tool_inverse_cost_vector(*values, solver)
+        prepared_matrixB = (POINTER(c_float) * len(matrixB))()
+        for i in range(len(matrixB)):
+            resource = [float(j) for j in matrixB[i]]
+            prepared_matrixB[i] = (c_float * len(resource))(*resource)
+        validated_input.matrixB = prepared_matrixB
+        validated_input.matrixB_rows = len(matrixB)
+        validated_input.matrixB_columns = len(matrixB[0])
 
-    # solver_input = MPEC_solver_input()
-    #
-    # # resource = [-4.0, 10.0, -6.0]
-    # resource = eval(input())
-    # vector_x0 = (c_float * len(resource))(*resource)
-    # solver_input.vector_x0 = vector_x0
-    # solver_input.vector_x0_length = len(resource)
-    #
-    # # resource = [[-6.0, -6.0, -9.0], [2.0, -4.0, 2.0], [7.0, -6.0, -4.0], [-6.0, 6.0, -7.0]]
-    # resource = eval(input())
-    # matrixA = (POINTER(c_float) * len(resource))()
-    # for i in range(len(resource)):
-    #     matrixA[i] = (c_float * len(resource[0]))(*resource[i])
-    # solver_input.matrixA = matrixA
-    # solver_input.matrixA_rows = len(resource)
-    # solver_input.matrixA_columns = len(resource[0]) if resource != [] else 0
-    #
-    # # resource = [[7.0, -2.0, -5.0, -2.0], [1.0, -5.0, 5.0, 3.0], [0.0, -5.0, -3.0, 5.0]]
-    # resource = eval(input())
-    # matrixB = (POINTER(c_float) * len(resource))()
-    # for i in range(len(resource)):
-    #     matrixB[i] = (c_float * len(resource[0]))(*resource[i])
-    # solver_input.matrixB = matrixB
-    # solver_input.matrixB_rows = len(resource)
-    # solver_input.matrixB_columns = len(resource[0]) if resource != [] else 0
-    #
-    # # resource = [[3.0, -8.0, 5.0], [-3.0, 9.0, -1.0]]
-    # resource = eval(input())
-    # matrixC = (POINTER(c_float) * len(resource))()
-    # for i in range(len(resource)):
-    #     matrixC[i] = (c_float * len(resource[0]))(*resource[i])
-    # solver_input.matrixC = matrixC
-    # solver_input.matrixC_rows = len(resource)
-    # solver_input.matrixC_columns = len(resource[0]) if resource != [] else 0
-    #
-    # # resource = [10.0, 2.0, 7.0]
-    # resource = eval(input())
-    # vector_b = (c_float * len(resource))(*resource)
-    # solver_input.vector_b = vector_b
-    # solver_input.vector_b_length = len(resource)
-    #
-    # # resource = [-9.0, 6.0]
-    # resource = eval(input())
-    # vector_c = (c_float * len(resource))(*resource)
-    # solver_input.vector_c = vector_c
-    # solver_input.vector_c_length = len(resource)
-    #
-    # result = lib.solve_inverse_via_MPEC(solver_input)
-    #
-    # print('objfun_coeffs: ')
-    # for i in range(result.objfun_coeffs_length):
-    #     print(result.objfun_coeffs[i], end=' ')
-    # print('\nconstrs_matrix: ')
-    # for i in range(result.constrs_matrix_rows):
-    #     for j in range(result.constrs_matrix_columns):
-    #         print(result.constrs_matrix[i][j], end=' ')
-    #     print()
-    # print('sense_array: ')
-    # for i in range(result.sense_array_length):
-    #     print(result.sense_array[i], end=' ')
-    # print('\nright_hand_side: ')
-    # for i in range(result.right_hand_side_length):
-    #     print(result.right_hand_side[i], end=' ')
-    # print('\nbounds: ')
-    # for i in range(result.bounds_rows):
-    #     for j in range(result.bounds_columns):
-    #         print(result.bounds[i][j], end=' ')
-    #     print()
+        prepared_matrixC = (POINTER(c_float) * len(matrixC))()
+        for i in range(len(matrixC)):
+            resource = [float(j) for j in matrixC[i]]
+            prepared_matrixC[i] = (c_float * len(resource))(*resource)
+        validated_input.matrixC = prepared_matrixC
+        validated_input.matrixC_rows = len(matrixC)
+        validated_input.matrixC_columns = len(matrixC[0])
 
-    def _prepare_get_QPmatrix_for_partial(self):
-        self._lib.get_P_matrix.restype = P_matrix
-        self._lib.get_P_matrix.argtypes = [c_int, c_int]
+        prepared_vector_b = [float(i) for i in vector_b]
+        validated_input.vector_b = (c_float * len(vector_b))(*prepared_vector_b)
+        validated_input.vector_b_length = len(vector_b)
 
-    def validate_get_QPmatrix_for_partial_input(self):
-        pass
+        prepared_vector_c = [float(i) for i in vector_c]
+        validated_input.vector_c = (c_float * len(vector_c))(*prepared_vector_c)
+        validated_input.vector_c_length = len(vector_c)
+        return validated_input
 
-    def validate_get_QPmatrix_for_partial_output(self):
-        pass
+    def validate_get_inverse_MPEC_model_output(self, output):
+        constrs_length = output.constrs_matrix_rows
+        vars_length = output.constrs_matrix_columns
+        vars_nx_length = output.nx
+        vars_nbin_length = output.nbin
+        obj = [output.objfun_coeffs[i] for i in range(output.objfun_coeffs_length)]
+        Amatrix = [[float(output.constrs_matrix[i][j]) for j in range(output.constrs_matrix_columns)]
+                   for i in range(output.constrs_matrix_rows)]
+        sense = [output.sense_array[i] for i in range(output.sense_array_length)]
+        rhs = [output.right_hand_side[i] for i in range(output.right_hand_side_length)]
+        bounds = [[float(output.bounds[i][j]) for j in range(output.bounds_columns)]
+                  for i in range(output.bounds_rows)]
+        return constrs_length, vars_length, vars_nx_length, vars_nbin_length, obj, Amatrix, sense, rhs, bounds
 
-    def get_QPmatrix_for_partial(self):
-        m = self._lib.get_P_matrix(5, 3)
-        print(m.matrix_side)
-        for i in range(m.matrix_side):
-            for j in range(m.matrix_side):
-                print(m.matrix[i][j], end=' ')
-            print()
-    # def solve_inverse_cost_vector_problem(self, *args, solver='gurobi'):
-    #     values = self.get_inverse_MPEC_model(*args)
-    #     return self.solve_tool_inverse_cost_vector(*values, solver)
+    def get_inverse_MPEC_model(self, vector_x0, martixA, matrixB, matrixC, vector_b, vector_c):
+        validated_input = self.validate_get_inverse_MPEC_model_input(vector_x0, martixA, matrixB, matrixC, vector_b,
+                                                                     vector_c)
+        output = self._lib.solve_inverse_via_MPEC(validated_input)
+        return self.validate_get_inverse_MPEC_model_output(output)
 
-
-    # m = lib.get_P_matrix(5, 3)
-    # print(m.matrix_side)
-    # for i in range(m.matrix_side):
-    #     for j in range(m.matrix_side):
-    #         print(m.matrix[i][j], end=' ')
-    #     print()
+    def solve_inverse_MPEC_problem(self, *args, solver='gurobi'):
+        values = self.get_inverse_MPEC_model(*args)
+        return self.solve_tool_inverse_MPEC(*values, solver)
 
 
 sys.modules[__name__] = InverseProgrammingSolver()
