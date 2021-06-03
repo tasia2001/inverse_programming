@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "main.h"
 
 const float inf = (float) 99999999.0;
 const float undefined = (float) 67108864.0;
 const float BIG_DIGIT = (float) 88888888.0;
-
 
 typedef struct {
     float *array;
@@ -76,34 +76,6 @@ void freeArray(Array *a) {
     a->used = a->size = 0;
 }
 
-struct BasicInput {
-    float *coefficients;
-    unsigned short coefficients_length;
-    float **constraint_matrix;
-    unsigned short constraint_matrix_length;
-    float **right_side_matrix;
-    unsigned short right_side_matrix_length;
-    float **bounds;
-    unsigned short bounds_length;
-};
-
-struct RemasteredInput {
-    float *coefficients;
-    int coefficients_length;
-    float **constraint_matrix;
-    int constraint_matrix_length;
-    float *right_side_array;
-    int right_side_array_length;
-};
-
-struct FloatVector {
-    float *values;
-};
-
-struct IntVector {
-    int *values;
-};
-
 void insert_positive_value(struct BasicInput *input, PointerArray *constraint_matrix, Array *right_side_array, int i) {
     insertPointerArray(constraint_matrix, input->constraint_matrix[i]);
     insertArray(right_side_array, input->right_side_matrix[i][0]);
@@ -169,7 +141,6 @@ void remake_bounds(struct BasicInput *input, PointerArray *constraint_matrix, Ar
         }
     }
 }
-
 struct RemasteredInput remaster_basic_input(struct BasicInput input) {
     PointerArray new_constraint_matrix;
     initPointerArray(&new_constraint_matrix, 1);
@@ -191,33 +162,6 @@ struct RemasteredInput remaster_basic_input(struct BasicInput input) {
 
     return output;
 }
-
-struct AnotherOneOutput {
-    int vars_length;
-    int constrs_length;
-    float *obj;
-    int obj_length;
-    float **newA;
-    int newA_length;
-    float *sense;
-    int sense_length;
-    float *rhs;
-    int rhs_length;
-    float *lb;
-    int lb_length;
-};
-
-struct CanonicalForm {
-    float *obj_fun_coefficients;
-    int obj_fun_coefficients_length;
-    float **constrs_matrix;
-    int constrs_matrix_rows;
-    int constrs_matrix_columns;
-    float *right_hand_side;
-    int right_hand_side_length;
-    float *low_bounds;
-    int low_bounds_length;
-};
 
 Array get_obj_vector(int units, int zeroes) {
     Array obj;
@@ -509,27 +453,6 @@ struct CanonicalForm to_canonical_form(struct RemasteredInput input) {
     return output;
 }
 
-struct ToPartialProblemInput {
-    float **matrix;
-    int matrix_rows;
-    int matrix_columns;
-    float *right_side_array;
-    int right_side_array_length;
-    float *vector;
-    int vector_length;
-};
-
-struct ToPartialProblemOutput {
-    float **constraint_matrix;
-    int constraint_matrix_rows;
-    int constraint_matrix_columns;
-    float **right_side;
-    int right_side_rows;
-    int right_side_columns;
-    int nz;
-    int nx;
-};
-
 float *get_zeroes_line(int length, float *line) {
     for (int i = 0; i < length; ++i) {
         line[i] = 0;
@@ -579,130 +502,111 @@ int get_defined_count(float *vector, int vector_length) {
     return count;
 }
 
-PointerArray get_constraint_matrix(float **input_matrix, int matrix_columns, int matrix_rows, float *vector) {
+PointerArray get_constraint_matrix(float **matrix, int matrix_columns, int matrix_rows,
+                                   float *undefined_positions, int undefined_positions_count,
+                                   float *defined_positions, int defined_positions_count) {
     PointerArray constraint_matrix;
     initPointerArray(&constraint_matrix, 1);
-
-    int undefined_positions_count = get_undefined_count(vector, matrix_rows);
-    float *undefined_positions = get_undefined_positions(vector, matrix_rows);
-    int defined_positions_count = get_defined_count(vector, matrix_rows);
-    float *defined_positions = get_defined_positions(vector, matrix_rows);
-
-    int c0_length = 3 * matrix_rows + matrix_columns;
-
+    int c0_length = 3 * matrix_columns + matrix_rows;
     float *c0 = NULL;
-    // 1 2
+    // 1
     for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
-        c0[matrix_rows + (int) undefined_positions[i]] = 1;
-        c0[2 * matrix_rows + matrix_columns + (int) undefined_positions[i]] = -1 / BIG_DIGIT;
+        c0[matrix_columns + (int) undefined_positions[i]] = 1;
+        c0[2 * matrix_columns + matrix_rows + (int) undefined_positions[i]] = -1 / BIG_DIGIT;
         insertPointerArray(&constraint_matrix, c0);
-
+    }
+    // 2
+    for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
-        c0[matrix_rows + (int) undefined_positions[i]] = 1;
-        c0[2 * matrix_rows + matrix_columns + (int) undefined_positions[i]] = -BIG_DIGIT;
+        c0[matrix_columns + (int) undefined_positions[i]] = 1;
+        c0[2 * matrix_columns + matrix_rows + (int) undefined_positions[i]] = -BIG_DIGIT;
         insertPointerArray(&constraint_matrix, c0);
-        printf("%d %d\n", 1, 2);
     }
-
     // 3
     for (int i = 0; i < defined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         c0[(int) defined_positions[i]] = -1;
-        for (int j = 2 * matrix_rows; j < 2 * matrix_rows + matrix_columns; ++j) {
-            c0[j] = input_matrix[j - 2 * matrix_rows][(int) defined_positions[i]];
+        for (int j = 2 * matrix_columns; j < 2 * matrix_columns + matrix_rows; ++j) {
+            c0[j] = matrix[j - 2 * matrix_columns][(int) defined_positions[i]];
         }
         insertPointerArray(&constraint_matrix, c0);
-        printf("%d\n", 3);
     }
-
     // 4
     for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         c0[(int) undefined_positions[i]] = -1;
-        for (int j = 2 * matrix_rows; j < 2 * matrix_rows + matrix_columns; ++j) {
-            c0[j] = input_matrix[j - 2 * matrix_rows][(int) undefined_positions[i]];
+        for (int j = 2 * matrix_columns; j < 2 * matrix_columns + matrix_rows; ++j) {
+            c0[j] = matrix[j - 2 * matrix_columns][(int) undefined_positions[i]];
         }
-        c0[2 * matrix_rows + matrix_columns + (int) undefined_positions[i]] = BIG_DIGIT;
+        c0[2 * matrix_columns + matrix_rows + (int) undefined_positions[i]] = BIG_DIGIT;
         insertPointerArray(&constraint_matrix, c0);
-        printf("%d\n", 4);
     }
-
     // 5
-    for (int i = 0; i < matrix_rows; ++i) {
-        c0 = malloc(sizeof(float) * c0_length);
-        get_zeroes_line(c0_length, c0);
-        c0[i] = -1;
-        for (int j = 2 * matrix_rows; j < 2 * matrix_rows + matrix_columns; ++j) {
-            c0[j] = input_matrix[j - 2 * matrix_rows][i];
-        }
-        insertPointerArray(&constraint_matrix, c0);
-        printf("%d\n", 5);
-    }
-
-    // 6
     for (int i = 0; i < matrix_columns; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
-        for (int j = 0; j <= undefined_positions_count; ++j) {
-            c0[matrix_rows + (int) undefined_positions[j]] = input_matrix[i][(int) undefined_positions[j]];
+        c0[i] = -1;
+        for (int j = 2 * matrix_columns; j < 2 * matrix_columns + matrix_rows; ++j) {
+            c0[j] = matrix[j - 2 * matrix_columns][i];
         }
         insertPointerArray(&constraint_matrix, c0);
-        printf("%d\n", 6);
     }
-
+    // 6
+    for (int i = 0; i < matrix_rows; ++i) {
+        c0 = malloc(sizeof(float) * c0_length);
+        get_zeroes_line(c0_length, c0);
+        for (int j = 0; j <= undefined_positions_count; ++j) {
+            c0[matrix_columns + (int) undefined_positions[j]] = matrix[i][(int) undefined_positions[j]];
+        }
+        insertPointerArray(&constraint_matrix, c0);
+    }
     // 7
     for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
-        c0[matrix_rows + (int) undefined_positions[i]] = 1;
+        c0[matrix_columns + (int) undefined_positions[i]] = 1;
         insertPointerArray(&constraint_matrix, c0);
-        printf("%d\n", 7);
     }
-
     // 8
     for (int i = 0; i < defined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
-        c0[matrix_rows + (int) defined_positions[i]] = 1;
+        c0[matrix_columns + (int) defined_positions[i]] = 1;
         insertPointerArray(&constraint_matrix, c0);
-        printf("%d\n", 8);
     }
 
     return constraint_matrix;
 }
 
-PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_columns, float *right_side_array,
-                            int right_side_array_length, float *vector) {
+PointerArray get_right_side(float **matrix, int matrix_columns, int matrix_rows,
+                            float *undefined_positions, int undefined_positions_count,
+                            float *defined_positions, int defined_positions_count,
+                            float *vector, float *right_side_array) {
     PointerArray right_side;
     initPointerArray(&right_side, 1);
-
-    int undefined_positions_count = get_undefined_count(vector, matrix_columns);
-    float *undefined_positions = get_undefined_positions(vector, matrix_columns);
-    int defined_positions_count = get_defined_count(vector, matrix_columns);
-    float *defined_positions = get_defined_positions(vector, matrix_columns);
-
     int c0_length = 2;
     float *c0 = NULL;
-    // 1 2
+    // 1
     for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         c0[0] = 0;
         c0[1] = 1;
         insertPointerArray(&right_side, c0);
-
+    }
+    // 2
+    for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         c0[0] = 0;
         c0[1] = -1;
         insertPointerArray(&right_side, c0);
     }
-
     // 3
     for (int i = 0; i < defined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
@@ -711,7 +615,6 @@ PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_co
         c0[1] = 0;
         insertPointerArray(&right_side, c0);
     }
-
     // 4
     for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
@@ -720,28 +623,26 @@ PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_co
         c0[1] = -1;
         insertPointerArray(&right_side, c0);
     }
-
     // 5
-    for (int i = 0; i < matrix_columns; ++i) {
+    for (int i = 0; i < matrix_rows; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
         c0[0] = 0;
         c0[1] = 1;
         insertPointerArray(&right_side, c0);
     }
-
     // 6
-    for (int i = 0; i < matrix_rows; ++i) {
+    for (int i = 0; i < matrix_columns; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
         get_zeroes_line(c0_length, c0);
+        float k = 0;
         for (int j = 0; j < defined_positions_count; ++j) {
-            c0[0] = right_side_array[i] -
-                    input_matrix[i][(int) defined_positions[j]] * vector[(int) defined_positions[j]];
-            c0[1] = 0;
-            insertPointerArray(&right_side, c0);
+            k += matrix[j][i] * vector[(int) defined_positions[j]];
         }
+        c0[0] = right_side_array[i] - k;
+        c0[1] = 1;
+        insertPointerArray(&right_side, c0);
     }
-
     // 7
     for (int i = 0; i < undefined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
@@ -750,7 +651,6 @@ PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_co
         c0[1] = 1;
         insertPointerArray(&right_side, c0);
     }
-
     // 8
     for (int i = 0; i < defined_positions_count; ++i) {
         c0 = malloc(sizeof(float) * c0_length);
@@ -759,23 +659,27 @@ PointerArray get_right_side(float **input_matrix, int matrix_rows, int matrix_co
         c0[1] = 0;
         insertPointerArray(&right_side, c0);
     }
-
-
     return right_side;
 }
 
-
 struct ToPartialProblemOutput to_partial_problem(struct ToPartialProblemInput input) {
     struct ToPartialProblemOutput output;
-
+    int undefined_positions_count = get_undefined_count(input.vector, input.matrix_columns);
+    float *undefined_positions = get_undefined_positions(input.vector, input.matrix_columns);
+    int defined_positions_count = get_defined_count(input.vector, input.matrix_columns);
+    float *defined_positions = get_defined_positions(input.vector, input.matrix_columns);
     PointerArray constraint_matrix;
     initPointerArray(&constraint_matrix, 1);
-    constraint_matrix = get_constraint_matrix(input.matrix, input.matrix_rows, input.matrix_columns, input.vector);
+    constraint_matrix = get_constraint_matrix(input.matrix, input.matrix_columns, input.matrix_rows,
+                                              undefined_positions, undefined_positions_count,
+                                              defined_positions, defined_positions_count);
 
     PointerArray right_side;
     initPointerArray(&right_side, 1);
-    right_side = get_right_side(input.matrix, input.matrix_rows, input.matrix_columns, input.right_side_array,
-                                input.right_side_array_length, input.vector);
+    right_side = get_right_side(input.matrix, input.matrix_columns, input.matrix_rows,
+                                undefined_positions, undefined_positions_count,
+                                defined_positions, defined_positions_count,
+                                input.vector, input.right_side_array);
 
     output.constraint_matrix = constraint_matrix.array;
     output.constraint_matrix_rows = (int) constraint_matrix.used;
@@ -790,40 +694,6 @@ struct ToPartialProblemOutput to_partial_problem(struct ToPartialProblemInput in
 
     return output;
 }
-
-struct MPEC_solver_input {
-    float *vector_x0;
-    int vector_x0_length;
-    float **matrixA;
-    int matrixA_rows;
-    int matrixA_columns;
-    float **matrixB;
-    int matrixB_rows;
-    int matrixB_columns;
-    float **matrixC;
-    int matrixC_rows;
-    int matrixC_columns;
-    float *vector_b;
-    int vector_b_length;
-    float *vector_c;
-    int vector_c_length;
-};
-struct MPEC_solver_output {
-    float *objfun_coeffs;
-    int objfun_coeffs_length;
-    float **constrs_matrix;
-    int constrs_matrix_rows;
-    int constrs_matrix_columns;
-    float *sense_array;
-    int sense_array_length;
-    float *right_hand_side;
-    int right_hand_side_length;
-    float **bounds;
-    int bounds_rows;
-    int bounds_columns;
-    int nx;
-    int nbin;
-};
 
 Array get_objfun_coeffs(int vars, int constrA) {
     Array objfun_coeffs;
@@ -1176,11 +1046,6 @@ struct MPEC_solver_output solve_inverse_via_MPEC(struct MPEC_solver_input input)
 
     return output;
 }
-
-struct P_matrix {
-    float **matrix;
-    int matrix_side;
-};
 
 struct P_matrix get_P_matrix(int n, int m) {
     struct P_matrix p;

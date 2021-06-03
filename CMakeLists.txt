@@ -3,4 +3,4 @@ project(inverse_programming C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(inverse_programming main.c)
+add_executable(inverse_programming main.c main.h module.c)
