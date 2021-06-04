@@ -497,7 +497,6 @@ class InverseProgrammingSolver:
 
     def validate_get_partial_problem_model_input(self, condition_matrix, right_side_array, vector):
         validated_input = ToPartialProblemInput()
-        validated_vector = FloatVector()
 
         prepared_condition_matrix = (POINTER(c_float) * len(condition_matrix))()
         for i in range(len(condition_matrix)):
@@ -515,10 +514,7 @@ class InverseProgrammingSolver:
         validated_input.vector = (c_float * len(vector))(*prepared_vector)
         validated_input.vector_length = len(vector)
 
-        prepared_vector = [float(i) for i in vector]
-        validated_vector.values = (c_float * len(vector))(*prepared_vector)
-
-        return validated_input, validated_vector
+        return validated_input
 
     def validate_get_partial_problem_model_output(self, output):
         constraint_matrix = [[float(output.constraint_matrix[i][j]) for j in range(output.constraint_matrix_columns)]
@@ -535,9 +531,8 @@ class InverseProgrammingSolver:
         return m, n, nx, nz, constraint_matrix, right_side
 
     def get_partial_problem_model(self, condition_matrix, right_side_array, vector):
-        validated_input, validated_vector = self.validate_get_partial_problem_model_input(
-            condition_matrix, right_side_array, vector)
-        output = self._lib.to_partial_problem(validated_input, validated_vector)
+        validated_input = self.validate_get_partial_problem_model_input(condition_matrix, right_side_array, vector)
+        output = self._lib.to_partial_problem(validated_input)
 
         return self.validate_get_partial_problem_model_output(output)
 
